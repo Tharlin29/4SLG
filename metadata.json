@@ -1,0 +1,6 @@
+{
+  "name": "Floating AI Predator - ShweLottery Wingo 60s",
+  "description": "AI-powered auto prediction predator for ShweLottery Wingo 60-second games with live data sync, pattern recognition, floating HUD overlay, and admin access control.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
