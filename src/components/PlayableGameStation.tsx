@@ -305,15 +305,19 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
       setBotElapsedSeconds(0);
       setTargetProfitDuration(null);
 
-      if (consecutiveLosses === 0) {
-        setCurrentAutoStake(autoBaseAmount);
-      }
+      // User requirement: Win ဖြစ်ခဲ့လျှင် နောက်ထပ် Method အရ ချက်ချင်းထပ်ပြန် bet ခဲ့ရလျှင်လည်း user သတ်မှတ်ပေးထားသော base bet အတိုင်း step 1(base stake)မှသာလျှင်ပြန် bet စေပါ
+      consecutiveLossesRef.current = 0;
+      setConsecutiveLosses(0);
+      setCurrentAutoStake(autoBaseAmount);
 
       const evalResult = methodStats ? evaluateAllMethodsLossStreaks(methodStats, threshold) : null;
       const readyList = threshold === 4 ? evalResult?.readyMethods4 : threshold === 6 ? evalResult?.readyMethods6 : evalResult?.readyMethods5;
 
       if (readyList && readyList.length > 0) {
         const target = readyList[0];
+        const multiNote = readyList.length > 1
+          ? ` (Method ${readyList.length} မျိုးအနက် Lose Rate ${target.loseRate}% အများဆုံးဖြစ်သဖြင့် Main အဖြစ် Lock)`
+          : ` (Lose Rate: ${target.loseRate}%)`;
         setSniperBotStatus('STRIKING');
         sniperBotStatusRef.current = 'STRIKING';
         setSniperLockedAlgo(target.algorithm);
@@ -321,10 +325,10 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
         onSniperLockedAlgoChange?.(target.algorithm);
         if (threshold === 4) {
           try { playStartBettingVoice(); } catch {}
-          setAutoFeedback(`🚨 [START BET ACTIVE] "HEY! NOW I AM START BETTING" Method [${target.label}] သည် ၄ ကြိမ် ဆက်တိုက် ရှုံးထားသဖြင့် Win မဖြစ်မချင်း ဤ Method တမျိုးတည်းဖြင့် စတင်လောင်းပါပြီ!`);
+          setAutoFeedback(`🚨 [START BET ACTIVE] "HEY! NOW I AM START BETTING" Method [${target.label}] သည် ${target.consecutiveLosses} ကြိမ် ဆက်တိုက် ရှုံးထားပြီး${multiNote} Win မဖြစ်မချင်း Step 1 (K ${autoBaseAmount.toLocaleString()} MMK) ဖြင့် ဤ Method တမျိုးတည်း စတင်လောင်းပါပြီ!`);
         } else {
           try { playSniperStrikeSound(); } catch {}
-          setAutoFeedback(`🎯 [${threshold}-LOSS SNIPER STRIKE ACTIVE] Method [${target.label}] သည် ${threshold} ကြိမ် ဆက်တိုက် ရှုံးထားသဖြင့် Win မဖြစ်မချင်း ဤ Method တမျိုးတည်းဖြင့် စတင်လောင်းပါပြီ!`);
+          setAutoFeedback(`🎯 [${threshold}-LOSS SNIPER STRIKE ACTIVE] Method [${target.label}] သည် ${target.consecutiveLosses} ကြိမ် ဆက်တိုက် ရှုံးထားပြီး${multiNote} Win မဖြစ်မချင်း Step 1 (K ${autoBaseAmount.toLocaleString()} MMK) ဖြင့် ဤ Method တမျိုးတည်း စတင်လောင်းပါပြီ!`);
         }
       } else {
         setSniperBotStatus('WAITING');
@@ -334,7 +338,7 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
         onSniperLockedAlgoChange?.(null);
         const maxLoss = evalResult?.highestLossCount || 0;
         const maxAlgo = evalResult?.highestLossAlgo;
-        setAutoFeedback(`🎯 [${threshold}-Loss Sniper စောင့်ဆိုင်းနေပါသည်] ${threshold} ကြိမ် ဆက်တိုက်ရှုံးသော Method ကို စောင့်နေပါသည်... (လက်ရှိ အများဆုံးရှုံး: [${maxAlgo || 'Scanning'}] ${maxLoss}/${threshold} ကြိမ်) • ${threshold} ကြိမ် ပြည့်ပါက အလိုအလျောက် စတင်လောင်းပါမည်။`);
+        setAutoFeedback(`🎯 [${threshold}-Loss Sniper စောင့်ဆိုင်းနေပါသည်] ${threshold} ကြိမ် ဆက်တိုက်ရှုံးသော Method ကို စောင့်နေပါသည်... (လက်ရှိ အများဆုံးရှုံး: [${maxAlgo || 'Scanning'}] ${maxLoss}/${threshold} ကြိမ်) • ${threshold} ကြိမ် ပြည့်ပါက Step 1 မူလငွေဖြင့် အလိုအလျောက် စတင်လောင်းပါမည်။`);
       }
     }
   }, [autoBetTrigger]);
@@ -627,9 +631,10 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
       setBotElapsedSeconds(0);
       setTargetProfitDuration(null);
 
-      if (consecutiveLosses === 0) {
-        setCurrentAutoStake(autoBaseAmount);
-      }
+      // User requirement: Win ဖြစ်ခဲ့လျှင် နောက်ထပ် Method အရ ချက်ချင်းထပ်ပြန် bet ခဲ့ရလျှင်လည်း user သတ်မှတ်ပေးထားသော base bet အတိုင်း step 1(base stake)မှသာလျှင်ပြန် bet စေပါ
+      consecutiveLossesRef.current = 0;
+      setConsecutiveLosses(0);
+      setCurrentAutoStake(autoBaseAmount);
 
       const isSniperActive = 
         bettingEngineMode === 'SNIPER_4LOSS_MODE' || 
@@ -650,6 +655,9 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
 
         if (readyList && readyList.length > 0) {
           const target = readyList[0];
+          const multiNote = readyList.length > 1
+            ? ` (Method ${readyList.length} မျိုးအနက် Lose Rate ${target.loseRate}% အများဆုံးဖြစ်သဖြင့် Main အဖြစ် Lock)`
+            : ` (Lose Rate: ${target.loseRate}%)`;
           setSniperBotStatus('STRIKING');
           sniperBotStatusRef.current = 'STRIKING';
           setSniperLockedAlgo(target.algorithm);
@@ -657,10 +665,10 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
           onSniperLockedAlgoChange?.(target.algorithm);
           if (threshold === 4) {
             try { playStartBettingVoice(); } catch {}
-            setAutoFeedback(`🚨 [START BET ACTIVE] "HEY! NOW I AM START BETTING" Method [${target.label}] သည် ၄ ကြိမ် ဆက်တိုက် ရှုံးထားသဖြင့် Win မဖြစ်မချင်း ဤ Method တမျိုးတည်းဖြင့် စတင်လောင်းပါပြီ!`);
+            setAutoFeedback(`🚨 [START BET ACTIVE] "HEY! NOW I AM START BETTING" Method [${target.label}] သည် ${target.consecutiveLosses} ကြိမ် ဆက်တိုက် ရှုံးထားပြီး${multiNote} Win မဖြစ်မချင်း Step 1 (K ${autoBaseAmount.toLocaleString()} MMK) ဖြင့် ဤ Method တမျိုးတည်း စတင်လောင်းပါပြီ!`);
           } else {
             try { playSniperStrikeSound(); } catch {}
-            setAutoFeedback(`🎯 [${threshold}-LOSS SNIPER STRIKE ACTIVE] Method [${target.label}] သည် ${threshold} ကြိမ် ဆက်တိုက် ရှုံးထားသဖြင့် Win မဖြစ်မချင်း ဤ Method တမျိုးတည်းဖြင့် စတင်လောင်းပါပြီ!`);
+            setAutoFeedback(`🎯 [${threshold}-LOSS SNIPER STRIKE ACTIVE] Method [${target.label}] သည် ${target.consecutiveLosses} ကြိမ် ဆက်တိုက် ရှုံးထားပြီး${multiNote} Win မဖြစ်မချင်း Step 1 (K ${autoBaseAmount.toLocaleString()} MMK) ဖြင့် ဤ Method တမျိုးတည်း စတင်လောင်းပါပြီ!`);
           }
         } else {
           setSniperBotStatus('WAITING');
@@ -670,7 +678,7 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
           onSniperLockedAlgoChange?.(null);
           const maxLoss = evalResult?.highestLossCount || 0;
           const maxAlgo = evalResult?.highestLossAlgo;
-          setAutoFeedback(`🎯 [${threshold}-Loss Sniper စောင့်ဆိုင်းနေပါသည်] ${threshold} ကြိမ် ဆက်တိုက်ရှုံးသော Method ကို စောင့်နေပါသည်... (လက်ရှိ အများဆုံးရှုံး: [${maxAlgo || 'Scanning'}] ${maxLoss}/${threshold} ကြိမ်) • ${threshold} ကြိမ် ပြည့်ပါက အလိုအလျောက် စတင်လောင်းပါမည်။`);
+          setAutoFeedback(`🎯 [${threshold}-Loss Sniper စောင့်ဆိုင်းနေပါသည်] ${threshold} ကြိမ် ဆက်တိုက်ရှုံးသော Method ကို စောင့်နေပါသည်... (လက်ရှိ အများဆုံးရှုံး: [${maxAlgo || 'Scanning'}] ${maxLoss}/${threshold} ကြိမ်) • ${threshold} ကြိမ် ပြည့်ပါက Step 1 မူလငွေဖြင့် အလိုအလျောက် စတင်လောင်းပါမည်။`);
         }
       } else {
         setAutoFeedback(`⚡ Auto Bet စတင်ဖွင့်လှစ်လိုက်ပါပြီ! စတင်ငွေ K ${autoBaseAmount.toLocaleString()} MMK၊ ${autoMultiplierMode}× ဆတိုး၊ Target Profit Timer စတင်ရေတွက်ပါပြီ။`);
@@ -712,8 +720,8 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
         return;
       }
 
-      const currentLosses = consecutiveLossesRef.current;
-      const requiredStake = currentLosses === 0
+      let currentLosses = consecutiveLossesRef.current;
+      let requiredStake = currentLosses === 0
         ? autoBaseAmountRef.current
         : Math.round(autoBaseAmountRef.current * Math.pow(autoMultiplierModeRef.current, currentLosses));
 
@@ -777,13 +785,24 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
           const readyList = targetThreshold === 4 ? evalResult?.readyMethods4 : targetThreshold === 6 ? evalResult?.readyMethods6 : evalResult?.readyMethods5;
 
           if (readyList && readyList.length > 0) {
-            // Target found! Lock onto this method!
+            // Target found! Lock onto the highest lose rate method!
             const target = readyList[0];
+            const multiNote = readyList.length > 1
+              ? ` (Method ${readyList.length} မျိုးအနက် Lose Rate ${target.loseRate}% အများဆုံးဖြစ်သဖြင့် Main အဖြစ် Lock)`
+              : ` (Lose Rate: ${target.loseRate}%)`;
+
             setSniperBotStatus('STRIKING');
             sniperBotStatusRef.current = 'STRIKING';
             setSniperLockedAlgo(target.algorithm);
             sniperLockedAlgoRef.current = target.algorithm;
             onSniperLockedAlgoChange?.(target.algorithm);
+
+            // User requirement: Win ဖြစ်ခဲ့လျှင် နောက်ထပ် Method အရ ချက်ချင်းထပ်ပြန် bet ခဲ့ရလျှင်လည်း user သတ်မှတ်ပေးထားသော base bet အတိုင်း step 1(base stake)မှသာလျှင်ပြန် bet စေပါ
+            consecutiveLossesRef.current = 0;
+            setConsecutiveLosses(0);
+            currentLosses = 0;
+            requiredStake = autoBaseAmountRef.current;
+            setCurrentAutoStake(autoBaseAmountRef.current);
 
             const lockedPred = methodPredictions?.[target.algorithm] || (history.length > 0 ? calculateAllPredictions(history, currentPeriod)[target.algorithm] : null);
             betChoice = lockedPred?.size || prediction?.size || 'BIG';
@@ -793,14 +812,14 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
                 playStartBettingVoice();
               } catch {}
               setAutoFeedback(
-                `🚨 [START BET ACTIVE] "HEY! NOW I AM START BETTING" Method [${target.label}] သည် ၄ ကြိမ် ဆက်တိုက် ရှုံးပြီးဖြစ်၍ Win ဖြစ်သည်အထိ ဤ Method တမျိုးတည်းဖြင့် K ${requiredStake.toLocaleString()} MMK စတင်လောင်းပါပြီ!`
+                `🚨 [START BET ACTIVE] "HEY! NOW I AM START BETTING" Method [${target.label}] သည် ${target.consecutiveLosses} ကြိမ် ဆက်တိုက် ရှုံးထားပြီး${multiNote} Win ဖြစ်သည်အထိ Step 1 (K ${requiredStake.toLocaleString()} MMK) ဖြင့် ဤ Method တမျိုးတည်း စတင်လောင်းပါပြီ!`
               );
             } else {
               try {
                 playSniperStrikeSound();
               } catch {}
               setAutoFeedback(
-                `🎯 [${targetThreshold}-LOSS SNIPER LOCK!] Method [${target.label}] သည် ${targetThreshold} ကြိမ် ဆက်တိုက် ရှုံးပြီးဖြစ်၍ Win ဖြစ်သည်အထိ ဤ Method တမျိုးတည်းဖြင့် K ${requiredStake.toLocaleString()} MMK စတင်လောင်းပါပြီ!`
+                `🎯 [${targetThreshold}-LOSS SNIPER LOCK!] Method [${target.label}] သည် ${target.consecutiveLosses} ကြိမ် ဆက်တိုက် ရှုံးထားပြီး${multiNote} Win ဖြစ်သည်အထိ Step 1 (K ${requiredStake.toLocaleString()} MMK) ဖြင့် ဤ Method တမျိုးတည်း စတင်လောင်းပါပြီ!`
               );
             }
           } else {
@@ -808,7 +827,7 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
             const maxLoss = evalResult?.highestLossCount || 0;
             const maxAlgo = evalResult?.highestLossAlgo;
             setAutoFeedback(
-              `🎯 [${targetThreshold}-Loss Sniper စောင့်ဆိုင်းနေပါသည်] ${targetThreshold} ကြိမ် ဆက်တိုက်ရှုံးသော Method ကို စောင့်နေပါသည်... (လက်ရှိ အများဆုံးရှုံး: [${maxAlgo || 'Scanning'}] ${maxLoss}/${targetThreshold} ကြိမ်) • ${targetThreshold} ကြိမ် ပြည့်ပါက အလိုအလျောက် စတင်လောင်းပါမည်။`
+              `🎯 [${targetThreshold}-Loss Sniper စောင့်ဆိုင်းနေပါသည်] ${targetThreshold} ကြိမ် ဆက်တိုက်ရှုံးသော Method ကို စောင့်နေပါသည်... (လက်ရှိ အများဆုံးရှုံး: [${maxAlgo || 'Scanning'}] ${maxLoss}/${targetThreshold} ကြိမ်) • ${targetThreshold} ကြိမ် ပြည့်ပါက Step 1 မူလငွေဖြင့် အလိုအလျောက် စတင်လောင်းပါမည်။`
             );
             return; // DO NOT BET! Wait for target consecutive losses!
           }
@@ -960,6 +979,10 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
                   setSniperLockedAlgo(null);
                   sniperLockedAlgoRef.current = null;
                   onSniperLockedAlgoChange?.(null);
+                  // User requirement: Win ဖြစ်ခဲ့လျှင် နောက်ထပ် Method အရ ချက်ချင်းထပ်ပြန် bet ခဲ့ရလျှင်လည်း user သတ်မှတ်ပေးထားသော base bet အတိုင်း step 1(base stake)မှသာလျှင်ပြန် bet စေပါ
+                  consecutiveLossesRef.current = 0;
+                  setConsecutiveLosses(0);
+                  setCurrentAutoStake(autoBaseAmountRef.current);
                 }
 
                 // TARGET PROFIT REACHED CHECK
@@ -1009,7 +1032,7 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
                       : (autoStrategyRef.current === 'SNIPER_5LOSS' || bettingEngineMode === 'SNIPER_5LOSS_MODE')
                       ? 5
                       : 6;
-                    setAutoFeedback(`🏆 [SNIPER WIN & PROFIT BANKED!] Locked Method ဖြင့် အနိုင်ရရှိပါသဖြင့် (+K ${netGain.toLocaleString()} MMK) Bet တာချက်ချင်းရပ်တန့်ပြီး နောက်တစ်ကြိမ် ${targetStreak} ကြိမ်ရှုံးမည့် Method ကို ပြန်လည်စောင့်ဆိုင်းပါမည်!`);
+                    setAutoFeedback(`🏆 [SNIPER WIN & PROFIT BANKED!] Locked Method ဖြင့် အနိုင်ရရှိပါသဖြင့် (+K ${netGain.toLocaleString()} MMK) Bet တာချက်ချင်းရပ်တန့်ပြီး အမြတ်သိမ်းဆည်းလိုက်ပါပြီ! နောက်ထပ် Method အရ ချက်ချင်းထပ်ပြန်လောင်းရလျှင်လည်း Step 1 မူလစတင်ငွေ (K ${resetStake.toLocaleString()} MMK) မှသာ စတင်လောင်းပါမည်!`);
                   } else {
                     setAutoFeedback(`🎉 [Auto Bet #${latestDraw.period.slice(-5)}] နိုင်ပါသဖြင့် (+K ${netGain.toLocaleString()} MMK) မူလစတင်ငွေ K ${resetStake.toLocaleString()} MMK သို့ ချက်ချင်း ပြန်သတ်မှတ်ပြီးပါပြီ!`);
                   }

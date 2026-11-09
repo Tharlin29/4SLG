@@ -290,12 +290,96 @@ export const Sniper6LossPanel: React.FC<Sniper6LossPanelProps> = ({
           </div>
         )}
 
+        {/* MULTI-METHOD LOSE RATE RANKING INTELLIGENCE BANNER */}
+        {evaluation.lockedCandidate && (
+          <div className="p-3.5 rounded-xl bg-slate-950/90 border border-rose-500/40 shadow-lg space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                  <Target className="w-4 h-4 animate-pulse" />
+                </span>
+                <div>
+                  <span className="font-tech text-xs sm:text-sm font-black text-white flex items-center gap-2 flex-wrap">
+                    <span>🎯 MAIN LOCKED METHOD:</span>
+                    <span className="text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/30">
+                      {evaluation.lockedCandidate.label}
+                    </span>
+                    <span className="text-amber-300 font-mono text-xs">
+                      ({evaluation.lockedCandidate.consecutiveLosses} ကြိမ် ဆက်တိုက်ရှုံး)
+                    </span>
+                  </span>
+                  <p className="text-[11px] text-slate-300 font-sans mt-0.5">
+                    {evaluation.selectionReason}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-rose-950 text-rose-300 border border-rose-500/40">
+                  🔥 LOSE RATE: {evaluation.lockedCandidate.loseRate}%
+                </span>
+                <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-slate-800 text-slate-300">
+                  WIN: {evaluation.lockedCandidate.winRate}%
+                </span>
+              </div>
+            </div>
+
+            {/* If multiple methods reached threshold, show the ranked list with their Lose Rates */}
+            {evaluation.hasMultipleCandidates && (
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider block">
+                  ⚡ အချက်ပြ Method အားလုံး၏ LOSE RATE အလိုက် အဆင့်သတ်မှတ်ချက် (PRIORITY RANKING):
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {(selectedThreshold === 4
+                    ? evaluation.readyMethods4
+                    : selectedThreshold === 5
+                    ? evaluation.readyMethods5
+                    : evaluation.readyMethods6
+                  ).map((cand, idx) => (
+                    <div
+                      key={cand.algorithm}
+                      className={`p-2 rounded-lg border text-xs flex items-center justify-between gap-2 ${
+                        idx === 0
+                          ? 'bg-rose-950/60 border-rose-400 ring-1 ring-rose-400/50 text-white font-bold'
+                          : 'bg-slate-900/70 border-slate-800 text-slate-400'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-amber-300 font-black">
+                            #{idx + 1}
+                          </span>
+                          <span className="truncate">{cand.label}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 block mt-0.5">
+                          {cand.consecutiveLosses} ကြိမ်ရှုံး • Total {cand.losses}L
+                        </span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={`text-[11px] font-mono font-black ${idx === 0 ? 'text-rose-300' : 'text-slate-300'}`}>
+                          {cand.loseRate}% Lose
+                        </span>
+                        {idx === 0 && (
+                          <span className="text-[9px] block text-emerald-400 font-sans font-bold">
+                            ⭐ MAIN BET
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 7 METHODS LOSS STREAK RADAR MONITOR (User requirement: Background monitoring) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-tech font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
               <Target className="w-4 h-4 text-rose-400" />
-              <span>METHOD ၇ မျိုး၏ လက်ရှိဆက်တိုက်ရှုံးမှု စောင့်ကြည့်ရေဒါ (CONSECUTIVE LOSS TRACKER)</span>
+              <span>METHOD ၇ မျိုး၏ လက်ရှိဆက်တိုက်ရှုံးမှု စောင့်ကြည့်ရေဒါ (CONSECUTIVE LOSS & LOSE RATE TRACKER)</span>
             </span>
             <span className="text-[10px] font-mono text-slate-400">
               {selectedThreshold === 4
@@ -309,7 +393,7 @@ export const Sniper6LossPanel: React.FC<Sniper6LossPanelProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
             {evaluation.details.map((m) => {
               const losses = m.consecutiveLosses;
-              const isLocked = sniperLockedAlgo === m.algorithm || losses >= selectedThreshold;
+              const isLocked = sniperLockedAlgo === m.algorithm || (evaluation.lockedCandidate?.algorithm === m.algorithm);
               const isWarning = selectedThreshold === 4 ? losses === 3 : selectedThreshold === 5 ? losses >= 3 : losses >= 4;
 
               return (
@@ -335,7 +419,7 @@ export const Sniper6LossPanel: React.FC<Sniper6LossPanelProps> = ({
                         : 'bg-slate-800 text-slate-400'
                     }`}>
                       {losses >= selectedThreshold 
-                        ? `🎯 ${losses}/${selectedThreshold} LOCKED` 
+                        ? `🎯 ${losses}/${selectedThreshold} READY` 
                         : selectedThreshold === 4 && losses === 3
                         ? `⚠️ 3/4 WARNING`
                         : selectedThreshold === 5 && losses >= 3 
@@ -374,9 +458,11 @@ export const Sniper6LossPanel: React.FC<Sniper6LossPanelProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between mt-2 text-[9px] font-mono">
-                    <span className="text-slate-500">Loss Streak:</span>
+                    <span className="text-slate-400">
+                      Lose Rate: <strong className="text-rose-400 font-bold">{m.loseRate}%</strong>
+                    </span>
                     <span className={`font-bold ${isLocked ? 'text-rose-400' : isWarning ? 'text-amber-400' : 'text-slate-400'}`}>
-                      {losses} ကြိမ် ဆက်တိုက်
+                      {losses} ကြိမ် ဆက်တိုက် ({m.losses}L/{m.total})
                     </span>
                   </div>
                 </div>
@@ -389,14 +475,14 @@ export const Sniper6LossPanel: React.FC<Sniper6LossPanelProps> = ({
         <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-xs font-sans text-slate-300">
           <div className="font-tech font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
             <Zap className="w-4 h-4 text-rose-400" />
-            <span>၄ ကြိမ်ရှုံး စောင့်ဆိုင်းကစားနည်း စည်းမျဉ်း (4-Loss Sniper Rules):</span>
+            <span>၄ ကြိမ် / ၅ ကြိမ် / ၆ ကြိမ်ရှုံး စောင့်ဆိုင်းကစားနည်း စည်းမျဉ်း (Sniper Rules & Management):</span>
           </div>
-          <ul className="space-y-1 text-slate-400 pl-4 list-disc text-[11px] leading-relaxed">
+          <ul className="space-y-1.5 text-slate-400 pl-4 list-disc text-[11px] leading-relaxed">
             <li>Method ၇ မျိုးထဲမှ <strong>၄ ကြိမ်ဆက်တိုက်ရှုံးသော Method</strong> ကို AI မှ နောက်ကွယ်တွင် Auto အမြဲစောင့်ကြည့်ရှာဖွေနေပါမည် (User ကစားသည်ဖြစ်စေ မကစားသည်ဖြစ်စေ Run ထားပါသည်)။</li>
             <li><strong>START BET ACTIVE ဖြစ်သည်နှင့်တပြိုင်နက်</strong> Alarm Sound အနေဖြင့် <strong>"HEY! NOW I AM START BETTING"</strong> အသံမြည်၍ Signal ပြပေးပါမည်။</li>
-            <li>အဆိုပါ ၄ ကြိမ်ရှုံးသော Method တမျိုးတည်းကို သီးသန့် Lock ပြုလုပ်ပြီး တခြားဘယ် Method ကိုမှ မသုံးဘဲ <strong>Win မဖြစ်မချင်း ဆက်တိုက် Bet</strong> ပါမည်။</li>
-            <li><strong>Win ဖြစ်ပါက Bet တာချက်ချင်းရပ်ပြီး</strong> အမြတ်သိမ်းဆည်းကာ နောက်တစ်ကြိမ် ၄ ကြိမ်ဆက်တိုက်ရှုံးမည့် Method ကို ပြန်လည် wait ပြီးမှသာ ထပ်မံ Bet ပါမည်။</li>
-            <li>အသုံးပြုသူမှ စိတ်ကြိုက် <strong>၅ ကြိမ်ရှုံး သို့မဟုတ် ၆ ကြိမ်ရှုံး Sniper စနစ်</strong> သို့လည်း ခလုတ်များဖြင့် ပြောင်းလဲကစားနိုင်ပါသည်။</li>
+            <li><strong>Method အများအပြား (ဥပမာ- ၃ မျိုးတွင် ၄/၅/၆ ကြိမ်) ရှုံးနေပါက</strong>: Lose Rate (အရှုံးရာခိုင်နှုန်း) အများဆုံးဖြစ်နေသော Method ကိုသာ <strong>Main Method အဖြစ် ရွေးချယ် Lock</strong> လုပ်ပြီး Bet ပါမည်။ အကြိမ်အရေအတွက် တူညီနေပါကလည်း Error မဖြစ်အောင် စနစ်တကျ အဆင့်ခွဲထားပါသည်။</li>
+            <li>အဆိုပါ Locked Method တမျိုးတည်းကို သီးသန့် Lock ပြုလုပ်ပြီး တခြားဘယ် Method ကိုမှ မသုံးဘဲ <strong>Win မဖြစ်မချင်း ဆက်တိုက် Bet</strong> ပါမည်။</li>
+            <li><strong>Win ဖြစ်ပါက Bet တာချက်ချင်းရပ်ပြီး</strong> အမြတ်သိမ်းဆည်းကာ နောက်တစ်ကြိမ် Method အသစ်အတွက် <strong>Step 1 (Base Stake မူလစတင်ငွေ)</strong> မှသာ စတင် Bet ပါမည် (Multiplier သယ်ဆောင်ခြင်း မရှိပါ)။</li>
           </ul>
         </div>
 
