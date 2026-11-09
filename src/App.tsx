@@ -119,6 +119,11 @@ export default function App() {
   // 4-Loss / 6-Loss Sniper Wait & Strike Engine State (Background continuous scan)
   const [scatterAlarmEvent, setScatterAlarmEvent] = useState<ScatterAlarmEvent | null>(null);
   const [sniperLockedAlgo, setSniperLockedAlgo] = useState<AlgorithmType | null>(null);
+  const [sevenMethodLockedAlgo, setSevenMethodLockedAlgo] = useState<AlgorithmType | null>(null);
+  const sevenMethodLockedAlgoRef = useRef<AlgorithmType | null>(sevenMethodLockedAlgo);
+  useEffect(() => {
+    sevenMethodLockedAlgoRef.current = sevenMethodLockedAlgo;
+  }, [sevenMethodLockedAlgo]);
   const [autoBetTrigger, setAutoBetTrigger] = useState<{ id: number; mode: BettingEngineMode; threshold?: 4 | 5 | 6 } | null>(null);
   const lastScatterTriggerRef = useRef<string>('');
 

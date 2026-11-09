@@ -61,6 +61,8 @@ interface PlayableGameStationProps {
   autoBetTrigger?: { id: number; mode: BettingEngineMode; threshold?: 4 | 5 | 6 } | null;
   sniperLockedAlgo?: AlgorithmType | null;
   onSniperLockedAlgoChange?: (algo: AlgorithmType | null) => void;
+  sevenMethodLockedAlgo?: AlgorithmType | null;
+  onSevenMethodLockedAlgoChange?: (algo: AlgorithmType | null) => void;
   soundEnabled?: boolean;
 }
 
@@ -157,6 +159,8 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
   autoBetTrigger,
   sniperLockedAlgo: externalSniperLockedAlgo,
   onSniperLockedAlgoChange,
+  sevenMethodLockedAlgo: externalSevenMethodLockedAlgo,
+  onSevenMethodLockedAlgoChange,
   soundEnabled = true,
 }) => {
   const soundEnabledRef = useRef<boolean>(soundEnabled);
@@ -237,6 +241,9 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
   const [sniperBotStatus, setSniperBotStatus] = useState<'WAITING' | 'STRIKING'>('WAITING');
   const [sniperLockedAlgo, setSniperLockedAlgo] = useState<AlgorithmType | null>(null);
 
+  // 7-Method 1-Loss Highest Lose Rate Lock Bot Setting (Locks onto highest lose rate method on 1 loss until win)
+  const [sevenMethodLockedAlgo, setSevenMethodLockedAlgo] = useState<AlgorithmType | null>(externalSevenMethodLockedAlgo || null);
+
   // Win Stop & Lose Stop Configuration
   const [winStopEnabled, setWinStopEnabled] = useState<boolean>(true);
   const [winStopAmount, setWinStopAmount] = useState<number>(1000);
@@ -278,6 +285,14 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
       sniperBotStatusRef.current = 'STRIKING';
     }
   }, [externalSniperLockedAlgo, bettingEngineMode]);
+
+  // Synchronize external 7-method locked algo
+  useEffect(() => {
+    if (externalSevenMethodLockedAlgo !== undefined) {
+      setSevenMethodLockedAlgo(externalSevenMethodLockedAlgo);
+      sevenMethodLockedAlgoRef.current = externalSevenMethodLockedAlgo;
+    }
+  }, [externalSevenMethodLockedAlgo]);
 
   // Handle external Auto Bet Start Trigger (from Sniper Panel, Floating Predator, or Alarm Banners)
   useEffect(() => {
@@ -364,6 +379,7 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
   const waitBotTargetRef = useRef(waitBotTarget);
   const sniperBotStatusRef = useRef<'WAITING' | 'STRIKING'>(sniperBotStatus);
   const sniperLockedAlgoRef = useRef<AlgorithmType | null>(sniperLockedAlgo);
+  const sevenMethodLockedAlgoRef = useRef<AlgorithmType | null>(sevenMethodLockedAlgo);
   const botStartTimeRef = useRef(botStartTime);
   const lastAutoBetPeriodRef = useRef<string>('');
   const prevHistoryPeriodRef = useRef<string>('');
@@ -396,8 +412,9 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
     waitBotTargetRef.current = waitBotTarget;
     sniperBotStatusRef.current = sniperBotStatus;
     sniperLockedAlgoRef.current = sniperLockedAlgo;
+    sevenMethodLockedAlgoRef.current = sevenMethodLockedAlgo;
     botStartTimeRef.current = botStartTime;
-  }, [winStopEnabled, winStopAmount, loseStopEnabled, loseStopAmount, autoBaseAmount, autoMultiplierMode, consecutiveLosses, autoStrategy, waitStreakThreshold, waitBotStatus, waitBotTarget, sniperBotStatus, sniperLockedAlgo, botStartTime]);
+  }, [winStopEnabled, winStopAmount, loseStopEnabled, loseStopAmount, autoBaseAmount, autoMultiplierMode, consecutiveLosses, autoStrategy, waitStreakThreshold, waitBotStatus, waitBotTarget, sniperBotStatus, sniperLockedAlgo, sevenMethodLockedAlgo, botStartTime]);
 
   useEffect(() => {
     nonStopAutoBetRef.current = nonStopAutoBet;
@@ -501,6 +518,9 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
     sniperBotStatusRef.current = 'WAITING';
     setSniperLockedAlgo(null);
     sniperLockedAlgoRef.current = null;
+    setSevenMethodLockedAlgo(null);
+    sevenMethodLockedAlgoRef.current = null;
+    onSevenMethodLockedAlgoChange?.(null);
     setBotStartTime(null);
     setBotElapsedSeconds(0);
     setTargetProfitDuration(null);
@@ -524,6 +544,9 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
     sniperBotStatusRef.current = 'WAITING';
     setSniperLockedAlgo(null);
     sniperLockedAlgoRef.current = null;
+    setSevenMethodLockedAlgo(null);
+    sevenMethodLockedAlgoRef.current = null;
+    onSevenMethodLockedAlgoChange?.(null);
     
     const now = Date.now();
     setBotStartTime(now);
@@ -686,6 +709,9 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
     } else {
       setIsAutoBetActive(false);
       setNonStopCountdown(null);
+      setSevenMethodLockedAlgo(null);
+      sevenMethodLockedAlgoRef.current = null;
+      onSevenMethodLockedAlgoChange?.(null);
       setAutoFeedback('Auto Bet ကို ခေတ္တရပ်တန့်လိုက်ပါပြီ။');
     }
   };
@@ -744,7 +770,11 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
         autoStrategy === 'SNIPER_5LOSS';
 
       if (autoStrategy === 'AI_GUESS' && !isSniperActive) {
-        betChoice = prediction?.size || 'BIG';
+        if (sevenMethodLockedAlgoRef.current && methodPredictions && methodPredictions[sevenMethodLockedAlgoRef.current]) {
+          betChoice = methodPredictions[sevenMethodLockedAlgoRef.current].size;
+        } else {
+          betChoice = prediction?.size || 'BIG';
+        }
       } else if (autoStrategy === 'WAIT_BOT' && !isSniperActive) {
         const streak = getConsecutiveStreak(history);
 
@@ -960,6 +990,14 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
                 setCurrentAutoStake(resetStake);
                 setAutoWins((w) => w + 1);
 
+                const wasSevenMethodLocked = sevenMethodLockedAlgoRef.current !== null;
+                const prevSevenMethodLocked = sevenMethodLockedAlgoRef.current;
+                if (sevenMethodLockedAlgoRef.current) {
+                  sevenMethodLockedAlgoRef.current = null;
+                  setSevenMethodLockedAlgo(null);
+                  onSevenMethodLockedAlgoChange?.(null);
+                }
+
                 if (autoStrategyRef.current === 'WAIT_BOT') {
                   setWaitBotStatus('WAITING');
                   waitBotStatusRef.current = 'WAITING';
@@ -1027,12 +1065,9 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
                     bettingEngineMode === 'SNIPER_5LOSS_MODE' ||
                     bettingEngineMode === 'SNIPER_6LOSS_MODE'
                   ) {
-                    const targetStreak = (autoStrategyRef.current === 'SNIPER_4LOSS' || bettingEngineMode === 'SNIPER_4LOSS_MODE')
-                      ? 4
-                      : (autoStrategyRef.current === 'SNIPER_5LOSS' || bettingEngineMode === 'SNIPER_5LOSS_MODE')
-                      ? 5
-                      : 6;
                     setAutoFeedback(`🏆 [SNIPER WIN & PROFIT BANKED!] Locked Method ဖြင့် အနိုင်ရရှိပါသဖြင့် (+K ${netGain.toLocaleString()} MMK) Bet တာချက်ချင်းရပ်တန့်ပြီး အမြတ်သိမ်းဆည်းလိုက်ပါပြီ! နောက်ထပ် Method အရ ချက်ချင်းထပ်ပြန်လောင်းရလျှင်လည်း Step 1 မူလစတင်ငွေ (K ${resetStake.toLocaleString()} MMK) မှသာ စတင်လောင်းပါမည်!`);
+                  } else if (wasSevenMethodLocked) {
+                    setAutoFeedback(`🏆 [7-METHOD LOCKED WIN & PROFIT BANKED!] Lock ထားသော Method [${prevSevenMethodLocked}] ဖြင့် အနိုင်ရရှိပါသဖြင့် (+K ${netGain.toLocaleString()} MMK) Lock ကို အောင်မြင်စွာ ဖြုတ်လိုက်ပြီး Step 1 မူလစတင်ငွေ (K ${resetStake.toLocaleString()} MMK) သို့ ပြန်လည်သတ်မှတ်လိုက်ပါပြီ!`);
                   } else {
                     setAutoFeedback(`🎉 [Auto Bet #${latestDraw.period.slice(-5)}] နိုင်ပါသဖြင့် (+K ${netGain.toLocaleString()} MMK) မူလစတင်ငွေ K ${resetStake.toLocaleString()} MMK သို့ ချက်ချင်း ပြန်သတ်မှတ်ပြီးပါပြီ!`);
                   }
@@ -1059,7 +1094,7 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
                   const nextStake = Math.round(autoBaseAmountRef.current * Math.pow(mult, nextLosses));
                   setCurrentAutoStake(nextStake);
 
-                  // User 2 ကြိမ်ဆက်တိုက် lose ဖြစ်နေလျှင် win rate အများဆုံး method သို့ AI မှ Auto ချက်ချင်း change လုပ်ပေးပါ (Except for 4-Loss / 5-Loss / 6-Loss Sniper Mode which sticks to the locked method exclusively)
+                  // 7-Method Multi-AI: ၁ ကြိမ်ရှုံးလျှင် Method ၇ မျိုးထဲမှ Lose Rate အများဆုံး Method သို့ Auto Change ပေးပြီး Win မဖြစ်မချင်း Lock ၍ Bet ပါသည်
                   const isSniperActive =
                     autoStrategyRef.current === 'SNIPER_4LOSS' ||
                     autoStrategyRef.current === 'SNIPER_5LOSS' ||
@@ -1067,22 +1102,37 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
                     bettingEngineMode === 'SNIPER_4LOSS_MODE' ||
                     bettingEngineMode === 'SNIPER_5LOSS_MODE' ||
                     bettingEngineMode === 'SNIPER_6LOSS_MODE';
-                  if (!isSniperActive && nextLosses >= 2 && methodStats && onChangeAiAlgorithm) {
-                    const algos: AlgorithmType[] = ['HMM', 'MARKOV', 'ENSEMBLE', 'NEURAL_MATRIX', 'NGRAM_SEQUENCE', 'STATISTICAL_PROB', 'META_SUPER_AI'];
-                    const ranked = [...algos].sort((a, b) => {
-                      if ((methodStats[b]?.winRate || 0) !== (methodStats[a]?.winRate || 0)) {
-                        return (methodStats[b]?.winRate || 0) - (methodStats[a]?.winRate || 0);
+
+                  if (!isSniperActive && methodStats) {
+                    if (!sevenMethodLockedAlgoRef.current) {
+                      // First loss: rank 7 methods by highest lose rate (100 - winRate)
+                      const algos: AlgorithmType[] = ['HMM', 'MARKOV', 'ENSEMBLE', 'NEURAL_MATRIX', 'NGRAM_SEQUENCE', 'STATISTICAL_PROB', 'META_SUPER_AI'];
+                      const rankedByLoseRate = [...algos].sort((a, b) => {
+                        const winA = methodStats[a]?.winRate ?? 75;
+                        const winB = methodStats[b]?.winRate ?? 75;
+                        const loseA = 100 - winA;
+                        const loseB = 100 - winB;
+                        if (loseB !== loseA) return loseB - loseA;
+                        return (methodStats[b]?.streak || 0) - (methodStats[a]?.streak || 0);
+                      });
+                      const highestLoseAlgo = rankedByLoseRate[0] || 'META_SUPER_AI';
+                      sevenMethodLockedAlgoRef.current = highestLoseAlgo;
+                      setSevenMethodLockedAlgo(highestLoseAlgo);
+                      onSevenMethodLockedAlgoChange?.(highestLoseAlgo);
+                      if (onChangeAiAlgorithm && highestLoseAlgo !== aiAlgorithm) {
+                        onChangeAiAlgorithm(highestLoseAlgo);
                       }
-                      return (methodStats[b]?.streak || 0) - (methodStats[a]?.streak || 0);
-                    });
-                    const bestMethod = ranked[0];
-                    if (bestMethod && bestMethod !== aiAlgorithm) {
-                      onChangeAiAlgorithm(bestMethod);
                       try {
                         playRadarLockSound();
                       } catch {}
-                      const bestStats = methodStats[bestMethod];
-                      setAutoFeedback(`⚡ [AI EMERGENCY AUTO-SWITCH] အသုံးပြုသူ ${nextLosses} ကြိမ် ဆက်တိုက် Lose ဖြစ်နေပါသဖြင့် Win Rate အမြင့်ဆုံးဖြစ်သော [${bestStats.label}] (${bestStats.winRate}%) သို့ ချက်ချင်း အလိုအလျောက် ကူးပြောင်းလိုက်ပါပြီ!`);
+                      const targetStats = methodStats[highestLoseAlgo];
+                      const targetLoseRate = targetStats ? (100 - targetStats.winRate).toFixed(1) : '0';
+                      setAutoFeedback(`⚡ [7-METHOD 1-LOSS AUTO-SWITCH] ၁ ကြိမ် ရှုံးသွားပါသဖြင့် Method ၇ မျိုးထဲမှ Lose Rate (${targetLoseRate}%) အများဆုံးဖြစ်သော [${targetStats?.label || highestLoseAlgo}] သို့ Auto Switch ပေးပြီး Win မဖြစ်မချင်း Lock ထားပါသည်!`);
+                    } else {
+                      // Already locked onto this method: hold lock until win
+                      const lockedAlgo = sevenMethodLockedAlgoRef.current;
+                      const targetStats = methodStats[lockedAlgo];
+                      setAutoFeedback(`🔒 [7-METHOD LOCKED HOLD] Lose Rate အများဆုံး Lock Method [${targetStats?.label || lockedAlgo}] ဖြင့် Win မဖြစ်မချင်း ${mult}× ဆတိုးပြီး K ${nextStake.toLocaleString()} MMK ဆက်လက်လောင်းပါမည်! (အဆင့်: ${nextLosses + 1})`);
                     }
                   }
 
@@ -1432,7 +1482,9 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
                     }`
                   : bettingEngineMode === 'FORMULA_MODE'
                   ? `Formula: ${activeFormula?.code || 'Active'} • ${activeFormula?.burmeseTitle || ''} • (Base: K ${autoBaseAmount.toLocaleString()} • Win Stop: ${winStopEnabled ? '+' + winStopAmount.toLocaleString() : 'OFF'} • Lose Stop: ${loseStopEnabled ? '-' + loseStopAmount.toLocaleString() : 'OFF'} • ${autoMultiplierMode}× Mult)`
-                  : `Method: [${aiAlgorithm}] • တိုက်ရိုက်ရွေးချယ်ထားသော စနစ်ဖြင့် လောင်းနေပါသည် (၂ ကြိမ်ရှုံးလျှင် Auto-Switch)`}
+                  : sevenMethodLockedAlgo
+                  ? `Method: [${sevenMethodLockedAlgo}] • 🔒 ၁ ကြိမ်ရှုံးသဖြင့် Lose Rate အများဆုံး Method ကို Lock ထားပြီး Win မဖြစ်မချင်း ဤ Method ဖြင့်သာ လောင်းပါမည်`
+                  : `Method: [${aiAlgorithm}] • တိုက်ရိုက်ရွေးချယ်ထားသော စနစ်ဖြင့် လောင်းနေပါသည် (၁ ကြိမ်ရှုံးလျှင် Lose Rate အများဆုံး Method သို့ Auto-Switch & Lock)`}
               </span>
             </div>
           </div>
@@ -2248,7 +2300,7 @@ export const PlayableGameStation: React.FC<PlayableGameStationProps> = ({
                     }`}
                   >
                     <div className="text-sm font-bold block mb-0.5 text-cyan-300">⚡ Follow AI (၇ မျိုး)</div>
-                    <span className="text-[10px] text-slate-400 font-sans font-normal block leading-tight">Meta-Consensus AI နည်းပညာ (၇) မျိုးမှ အကောင်းဆုံး Method အတိုင်း လိုက်လောင်းသည် (၂ ကြိမ်ရှုံး Auto-Switch)</span>
+                    <span className="text-[10px] text-slate-400 font-sans font-normal block leading-tight">Meta-Consensus AI နည်းပညာ (၇) မျိုးမှ အကောင်းဆုံး Method အတိုင်း လိုက်လောင်းသည် (၁ ကြိမ်ရှုံးလျှင် Lose Rate အများဆုံး Method သို့ Auto-Switch & Lock)</span>
                   </button>
 
                   <button
